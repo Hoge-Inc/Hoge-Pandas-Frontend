@@ -1,58 +1,97 @@
-import React, { useState } from 'react';
+import React, { useState, ChangeEvent } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import Kards from './components/Kards'
 import GetNFTs from './components/GetNFTs'
-import InputForm from './components/InputForm'
+import { ethers } from 'ethers'
+import Moralis from 'moralis'
 
-
+type InputEvent = ChangeEvent<HTMLInputElement>;
 
 const App: React.FC = () => {
-  const [loaded, setLoaded] = React.useState<boolean>(false)
+  const [inputValue, setInputValue] = useState<string>('')
   const [holderAddress, setHolderAddress] = useState<string>('')
   const [tokenIds, setTokenIds] = useState< Map<number, [any]> >()
   const [names, setNames] = useState< Map<number, [any]> >()
-  const [count, setCount] = useState<number>(0)
   const [bambooAmount, setBambooAmount] = useState<number>(0)
   const [someMsg, setSomeMsg] = useState<string>('')
   const [valid, setValid] = useState<boolean>(false)
+  const [started, setStarted] = useState<boolean>(false)
+  const [done, setDone] = useState<boolean>(false)
+
+
+  const handleHolderInputChange = (e: InputEvent) => {
+    e.preventDefault();
+    
+    if (ethers.utils.isAddress(e.target.value) ){ 
+      setInputValue(e.target.value)
+      setValid(true)
+      setSomeMsg('Valid Address') 
+      
+    }
+    else { 
+      setInputValue('')
+      setValid(false)
+      setSomeMsg('Need Valid Address') } 
+  }
+
+  const refreshState = () => {
+    setTokenIds(undefined)
+    setNames(undefined)
+    setBambooAmount(0)
+  }
 
   React.useEffect(() => {
+
+    if (inputValue !== '' && inputValue !== holderAddress) {
+      setHolderAddress(inputValue)
+      refreshState()
+    }
+
     if (tokenIds === undefined && valid) {
       setSomeMsg('None Found')
     }
     if (tokenIds !== undefined) {
       setSomeMsg('Found')
     }
-  },[tokenIds, valid])
+    const startServer = async () => {
+      await Moralis.start({
+        apiKey: process.env.REACT_APP_MORALIS_API_KEY,
+        formatEvmAddress: 'checksum',
+        //formatEvmChainId: 'decimal',
+        //logLevel: 'verbose'
+      })
+      setStarted(true)
+    }
+    if (!started) startServer()
+  },[holderAddress, inputValue, started, tokenIds, valid])
+
+  const someInput =     
+    <input
+      id="holderAdress"
+      className="address"
+      placeholder="Holder Address"
+      value={inputValue}
+      onChange={handleHolderInputChange}
+      type="text"
+    />
+
 
   const nftOptions = {
     valid: valid,
     holderAddress: holderAddress,
-    loaded: loaded,
-    setLoaded: setLoaded,
     tokenIds: tokenIds,
     setTokenIds: setTokenIds,
-    names: names,
     setNames: setNames,
-    setCount: setCount,
-    setBambooAmount: setBambooAmount
+    setBambooAmount: setBambooAmount,
+    done: done,
+    setDone: setDone
   }
 
-  const inputOptions = {
-    setValid: setValid,
-    setSomeMsg: setSomeMsg,
-    holderAddress: holderAddress,
-    setHolderAddress: setHolderAddress,
-    setLoaded: setLoaded,
-    setTokenIds: setTokenIds,
-    setNames: setNames,
-  }
 
   const kardsOptions = {
+    done: done,
     bambooAmount: bambooAmount,
-    count: count,
-    loaded: loaded,
     tokenIds: tokenIds,
     names: names,
   }
@@ -63,7 +102,7 @@ const App: React.FC = () => {
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
         <h1>Hoge Pandas 🐼 - Web Manager</h1>
-        <InputForm {...inputOptions} />
+        {someInput}
         {someMsg}
         <Kards {...kardsOptions} />
       </header>

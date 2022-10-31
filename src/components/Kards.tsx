@@ -3,17 +3,15 @@ import './Kards.css'
 import { CONTRACT } from './info'
 
 type Props = {
+    done: boolean;
     bambooAmount: number;
-    count: number;
-    loaded: boolean;
     tokenIds: Map<number, [any]> | undefined;
     names: Map<number, [any]> | undefined;
 }
 
 export const Kards: React.FC<Props> = ({
+    done,
     bambooAmount,
-    count,
-    loaded,
     tokenIds,
     names,
 }) => {
@@ -22,7 +20,7 @@ export const Kards: React.FC<Props> = ({
    
     React.useEffect(() => {
         const rendered: React.ReactElement[]= [];
-    if (loaded && tokenIds !== undefined ) {
+    if (!done && tokenIds !== undefined ) {
         tokenIds.forEach((value, key) => {   
                 const attribute = new Traits()
                 setTraits(value, attribute)
@@ -39,7 +37,7 @@ export const Kards: React.FC<Props> = ({
         //console.log(count)
     } else { setRender([])}
     
-},[loaded, names, tokenIds, count, bambooAmount])
+},[names, tokenIds, bambooAmount, done])
 return <div className='CardBox'>{render}</div>
 }
 

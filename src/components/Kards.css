@@ -226,7 +226,7 @@ figure {
     color: honeydew;
 }
 .CardBox {
-    margin-top: 2%;
+    margin: 4%;
     width: 100%;
     display: grid;
     row-gap: 4em;
@@ -250,8 +250,8 @@ figure {
 .Card {
     
     perspective: 1000px;
-    margin-top: 25px;
-    padding: 5px;
+    margin: 0px;
+    padding: 0px;
 
 }
 

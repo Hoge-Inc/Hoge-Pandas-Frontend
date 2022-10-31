@@ -8,61 +8,41 @@ import { ABI, CONTRACT } from './info'
 type Props = {
     valid: boolean;
     holderAddress: string;
-    loaded: boolean;
-    setLoaded: (val: boolean) => void;
+    tokenIds: Map<number, [any]> | undefined;
     setTokenIds: (val: Map<number, [any]> | undefined) => void;
     setNames: (val: Map<number, [any]> | undefined) => void;
-    setCount: (val: number) => void;
     setBambooAmount: (val: number) => void;
+    done: boolean;
+    setDone: (val: boolean) => void;
 }
 
 export const GetNFTs: React.FC<Props> = ({
     valid,
     holderAddress,
-    loaded,
-    setLoaded,
+    tokenIds,
     setTokenIds,
     setNames,
-    setCount,
-    setBambooAmount
+    setBambooAmount,
+    done,
+    setDone
 }) => {
-    const [started, setStarted] = useState<boolean>(false)
-    const [go, setGo] = useState<boolean>(false)
-    const [loading, setLoading] = useState<boolean>(false)
-    const [done, setDone] = useState<boolean>(false)
-    const [foundIds, setFoundIds] = useState<Map<string, number>>()
     
+    const [loading, setLoading] = useState<boolean>(false)
+    const [foundIds, setFoundIds] = useState<Map<string, number>>()
+
+
     React.useEffect(() => {
-        let currentAddress = ''
+
         const idMap = new Map<number, [any]>()
         const nameMap = new Map<number, [any]>()
-        
-        const goFetch = (id:number, metadata:string) => {
-            fetch(metadata)
-            .then(response => response.json())
-            .then((data) => {
-                console.log(data)
-                idMap.set(id, data)
-                setTokenIds(idMap) 
-            })
-            .catch((error) => {
-                console.error(error)
-                return
-            })
-        }
-    
-        const startServer = async () => {
-            await Moralis.start({
-              apiKey: process.env.REACT_APP_MORALIS_API_KEY,
-              formatEvmAddress: 'checksum',
-              //formatEvmChainId: 'decimal',
-              //logLevel: 'verbose'
-            })
-            setStarted(true)
+
+        async function setIds() {
+            const foundIds = await getTokenIds()
+            setFoundIds(foundIds)
         }
     
         const getTokenIds = async () => {
-            if (!valid) { return }
+            if (!valid || tokenIds !== undefined || holderAddress === '') { return }
             const options = {
                 address: holderAddress,
                 chain: EvmChain.POLYGON,
@@ -78,71 +58,74 @@ export const GetNFTs: React.FC<Props> = ({
             });
             return items
         }
+        
+        async function getDone(_ids: Map<string, number>) {
+            await render(_ids)
+        }
 
-        async function getDone(ids: Map<string, number>) {
-            await render(ids)
-        }
-        async function setIds() {
-            const foundIds = await getTokenIds()
-            setFoundIds(foundIds)
-        }
-        async function render(ids: Map<string, number>) {
-            if (!ids) { return }
+        async function render(_ids: Map<string, number>) {
+            if (!_ids) { return }
             let count = 0
-            for ( let key of ids.keys()) {
+            for ( let key of _ids.keys()) {
                 console.log(key)
                 await getData(key, "getTokenData")
                 await getData(key, "getTokenName")
-                setCount(++count)
-                if (count === ids.size){
+                if (++count === _ids.size){
                     setDone(true)
                 }
             }
         }
-
-        const getData = async (id:string, functionName:string) => {
-            if (!id) {return}
+        
+        const getData = async (_id:string, _functionName:string) => {
+            if (!_id) {return}
             const options = {
                 address: CONTRACT,
                 chain: EvmChain.POLYGON,
-                functionName: functionName,
+                functionName: _functionName,
                 abi: ABI,
-                params: { nft_id: id }
+                params: { nft_id: _id }
             }
             const response = await Moralis.EvmApi.utils.runContractFunction(options);
             const rr = response.result
             console.log(rr)
             if (rr.slice(-5) !== '.json') {
-                nameMap.set(parseInt(id), [rr])
+                nameMap.set(parseInt(_id), [rr])
                 setNames(nameMap)
             }else {
-                goFetch(parseInt(id), rr)
+                goFetch(parseInt(_id), rr)
             }
         }
+    
+        const goFetch = (id:number, metadata:string) => {
+            fetch(metadata)
+            .then(response => response.json())
+            .then((data) => {
+                console.log(data)
+                idMap.set(id, data)
+                setTokenIds(idMap) 
+            })
+            .catch((error) => {
+                console.error(error)
+                return
+            })
+        }
 
-        if (!go){
-            startServer()
-            setGo(true)
-        }
-        if (started && !loading && !loaded && valid) {
+
+        if (tokenIds === undefined && !loading) setFoundIds(undefined)
+        if (!loading && valid && foundIds === undefined) {
             setIds() 
+            setDone(false)
         }
-        if (foundIds !== undefined && !loading && !loaded && !done) {
+        if (foundIds !== undefined && !loading && !done) {
             setLoading(true)
             getDone(foundIds)
-
         }
-        if (done && foundIds !== undefined) {
-            setLoaded(true)
+        if (done && tokenIds !== undefined) {
             setLoading(false)
-        }
-        if (currentAddress !== holderAddress) {
-            
-            currentAddress = holderAddress
-
+            console.log('Done Loading.')
         }
 
-    },[started, loading, loaded, done, go, setLoaded, foundIds, setNames, setTokenIds, setCount, setBambooAmount, valid, holderAddress])
+    },[loading, done, foundIds, setNames, setTokenIds, setBambooAmount, valid, holderAddress, tokenIds, setDone])
 
     return <></>
 }
